@@ -114,7 +114,7 @@ def dados_recebidos(conexao, dados):
         except keyError:
             return
 
-        get_object_by_id(tgt_conn_id).enviar(msg(b':' + bytes(get_nick_from_conn(conexao), 'utf-8') + b' PRIVMSG ' + tgt_usr + b' :' + msg_bytes))
+        get_object_by_id(tgt_conn_id).enviar(msg(f':{get_nick_from_conn(conexao)} PRIVMSG {tgt_usr.decode("utf-8")} :{msg_bytes.decode("utf-8")}'))
 
     print(conexao, dados)
 
