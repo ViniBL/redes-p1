@@ -109,9 +109,12 @@ def dados_recebidos(conexao, dados):
             del USERS_TABLE[get_nick_from_conn(conexao)]
             USERS_TABLE[payload.decode("utf-8")] = id(conexao)
 
-            for k, v in CHANNEL_TABLE.items():
-                if old_nick in v:
-                    CHANNEL_TABLE[k] = v.replace(old_nick, payload.decode("utf-8"))
+            for k, usrs_in_channel in CHANNEL_TABLE.items():
+                if old_nick in usrs_in_channel:
+                    CHANNEL_TABLE[k] = usrs_in_channel.replace(old_nick, payload.decode("utf-8"))
+                for usr in usrs_in_channel:
+                    get_object_by_id(usr).enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
+                # conexao.enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
 
             return
 
