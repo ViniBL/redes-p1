@@ -11,7 +11,14 @@ def log(msg, *args, **kwargs):
 
 MSG_TERMINATOR = b'\n' if system() == 'Darwin' else b'\r\n'
 
-LIST_OF_CONNS = {} # holds dangling messages
+CONNS_TABLE = {} # holds dangling messages :: { 'conn': 'mes..sage' }
+USERS_TABLE = {} # { 'apelido': 'conn' }
+
+
+def get_old_nick(conn):
+    for k, v in USERS_TABLE.items():
+        if v == id(conn):
+            return k
 
 
 def validar_nome(nome):
@@ -24,21 +31,26 @@ def msg(txt):
 
 def sair(conexao):
     print(conexao, 'conexão fechada')
+
+    for k, v in USERS_TABLE.items():
+        if v == id(conexao):
+            del USERS_TABLE[k]
+
     conexao.fechar()
 
 
 def get_full_msg(conexao, dados):
     # Garante que a msgm esta completa
-    if id(conexao) not in LIST_OF_CONNS:
+    if id(conexao) not in CONNS_TABLE:
         log(id(conexao), 'created in table')
-        LIST_OF_CONNS[id(conexao)] = b''
+        CONNS_TABLE[id(conexao)] = b''
 
     if not dados.endswith(MSG_TERMINATOR):
-        LIST_OF_CONNS[id(conexao)] += dados
+        CONNS_TABLE[id(conexao)] += dados
         return
 
-    dados = LIST_OF_CONNS[id(conexao)] + dados
-    del LIST_OF_CONNS[id(conexao)]
+    dados = CONNS_TABLE[id(conexao)] + dados
+    del CONNS_TABLE[id(conexao)]
     log(id(conexao), 'deleted in table')
 
     return (conexao, dados[:-len(MSG_TERMINATOR)])
@@ -63,11 +75,30 @@ def dados_recebidos(conexao, dados):
         conexao.enviar(b':server PONG server:' + payload)
 
     if cmd == b'NICK':
+        payload = bytes(payload.decode("utf-8").lower(), 'utf-8')
         if not validar_nome(payload):
+            # checa se nome esta ok
             return conexao.enviar(msg(f'server 432 apelido_atual {payload.decode("utf-8")} :Erroneous nickname'))
+
+        if payload.decode("utf-8") in USERS_TABLE:
+            # checa se usuario ja existe
+            return conexao.enviar(msg(f':server 433 apelido_atual {payload.decode("utf-8")} :Nickname is already in use'))
+
+        if id(conexao) in USERS_TABLE.values():
+            # troca de usuario
+            old_nick = get_old_nick(conexao)
+
+            conexao.enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
+            del USERS_TABLE[get_old_nick(conexao)]
+            USERS_TABLE[payload.decode("utf-8")] = id(conexao)
+
+            return
 
         conexao.enviar(msg(f':server 001 {payload.decode("utf-8")} :Welcome'))
         conexao.enviar(msg(f':server 422 {payload.decode("utf-8")} :MOTD File is missing'))
+
+        # adiciona usuario na tabela
+        USERS_TABLE[payload.decode("utf-8")] = id(conexao)
 
     print(conexao, dados)
 
