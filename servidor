@@ -3,6 +3,7 @@ import asyncio
 from tcp import Servidor
 import re
 from platform import system
+import gc
 
 
 def log(msg, *args, **kwargs):
@@ -19,6 +20,12 @@ def get_nick_from_conn(conn):
     for k, v in USERS_TABLE.items():
         if v == id(conn):
             return k
+
+
+def get_object_by_id(id_):
+    for obj in gc.get_objects():
+        if id(obj) == id_:
+            return obj
 
 
 def validar_nome(nome):
@@ -101,7 +108,13 @@ def dados_recebidos(conexao, dados):
         USERS_TABLE[payload.decode("utf-8")] = id(conexao)
 
     if cmd == b'PRIVMSG':
-        target_usr, msg_bytes = payload.split(b' ', 1)
+        tgt_usr, msg_bytes = payload.split(b' ', 1)
+        try:
+            tgt_conn_id = USERS_TABLE[tgt_usr.decode("utf-8")]
+        except keyError:
+            return
+
+        get_object_by_id(tgt_conn_id).enviar(msg_bytes)
 
     print(conexao, dados)
 
