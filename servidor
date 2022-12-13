@@ -12,8 +12,8 @@ def log(msg, *args, **kwargs):
 
 MSG_TERMINATOR = b'\n' if system() == 'Darwin' else b'\r\n'
 
-CONNS_TABLE = {} # holds dangling messages :: { 'conn': 'mes..sage' }
-USERS_TABLE = {} # { 'apelido': 'conn' }
+CONNS_TABLE = {} # holds dangling messages :: { 'id_conn': 'mes..sage' }
+USERS_TABLE = {} # { 'apelido': 'id_conn' }
 CHANNEL_TABLE = {} # { 'canal': ['apelido0', 'apelido1', ...]}
 
 def get_nick_from_conn(conn):
@@ -48,7 +48,7 @@ def sair(conexao):
     for chnl_name, usr_lst in CHANNEL_TABLE.items():
         if curr_usr in usr_lst:
             for usr in usr_lst:
-                USERS_TABLE[usr].enviar(msg(f':{curr_usr.decode("utf-8")} QUIT :Connection closed'))
+                get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr.decode("utf-8")} QUIT :Connection closed'))
             CHANNEL_TABLE[chnl_name].pop()
 
     conexao.fechar()
@@ -122,7 +122,7 @@ def dados_recebidos(conexao, dados):
         tgt_usr, msg_bytes = payload.split(b' :', 1)
         try:
             tgt_conn_id = USERS_TABLE[tgt_usr.decode("utf-8")]
-        except keyError:
+        except KeyError:
             return
 
         get_object_by_id(tgt_conn_id).enviar(msg(f':{get_nick_from_conn(conexao)} PRIVMSG {tgt_usr.decode("utf-8")} :{msg_bytes.decode("utf-8")}'))
@@ -133,33 +133,36 @@ def dados_recebidos(conexao, dados):
         if not payload.startswith(b'#'):
             return conexao.enviar(msg(f':server 403 {payload.decode("utf-8")} :No such channel'))
 
-        if payload not in CHANNEL_TABLE:
-            CHANNEL_TABLE[payload] = []
+        channel_name = payload.decode("utf-8")
+        if channel_name not in CHANNEL_TABLE:
+            CHANNEL_TABLE[channel_name] = []
 
-        curr_usr = get_nick_from_conn(id(conexao))
-        CHANNEL_TABLE[payload].append(curr_usr)
+        curr_usr = get_nick_from_conn(conexao)
+        CHANNEL_TABLE[channel_name].append(curr_usr)
 
-        for usr in CHANNEL_TABLE[payload]:
-            USERS_TABLE[usr].enviar(msg(f':{curr_usr} JOIN :canal'))
+        for usr in CHANNEL_TABLE[channel_name]:
+            get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr} JOIN :{channel_name}'))
 
-        channel_usrs_lst = CHANNEL_TABLE[payload].sort()
+        channel_usrs_lst = CHANNEL_TABLE[channel_name]
+        channel_usrs_lst.sort()
         full_usr_lst = " ".join(channel_usrs_lst)
 
-        n = 512 - len(f':server 353 {curr_usr} = {payload.decode("utf-8")} :') - len(MSG_TERMINATOR)
+        n = 512 - len(f':server 353 {curr_usr} = {channel_name} :') - len(MSG_TERMINATOR)
         chunks = [full_usr_lst[i:i+n] for i in range(0, len(full_usr_lst), n)]
-        conexao.enviar(msg(f':server 353 {curr_usr} = {payload.decode("utf-8")} :{chunks}'))
+        conexao.enviar(msg(f':server 353 {curr_usr} = {channel_name} :{" ".join(chunks)}'))
 
 
-    if cmd = b'PART':
+    if cmd == b'PART':
         payload = bytes(payload.decode("utf-8").lower(), 'utf-8')
+        channel_name = payload.decode("utf-8")
         if not payload.startswith(b'#'):
             return conexao.enviar(msg(f':server 403 {payload.decode("utf-8")} :No such channel'))
 
         curr_usr = get_nick_from_conn(id(conexao))
-        for usr in CHANNEL_TABLE[payload]:
-            USERS_TABLE[usr].enviar(msg(f':{curr_usr.decode("utf-8")} PART {payload.decode("utf-8")}'))
+        for usr in CHANNEL_TABLE[channel_name]:
+            get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr} PART {channel_name}'))
 
-        CHANNEL_TABLE[payload].pop(curr_usr)
+        CHANNEL_TABLE[channel_name].pop(curr_usr)
 
 
     print(conexao, dados)
