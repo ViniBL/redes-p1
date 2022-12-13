@@ -15,11 +15,15 @@ def sair(conexao):
 
 def dados_recebidos(conexao, dados):
     
-    
+    try: 
+        cmd, payload = dados.split(b' ',1)
+    except:
+        cmd,payload = dados.split[0] 
+
     if dados == b'':
         return sair(conexao)
-    if dados.split(b' ',1)[0] == b"PING":
-        conexao.enviar(b':server PONG server:' + dados.split(b' ', 1)[1])
+    if cmd == b"PING":
+        conexao.enviar(b':server PONG server:' + payload)
 
     # if dados.split(b' ',1)[0] == b"NICK":
 
