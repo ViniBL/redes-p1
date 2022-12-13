@@ -105,15 +105,17 @@ def dados_recebidos(conexao, dados):
             # troca de usuario
             old_nick = get_nick_from_conn(conexao)
 
-            conexao.enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
+            # conexao.enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
             del USERS_TABLE[get_nick_from_conn(conexao)]
             USERS_TABLE[payload.decode("utf-8")] = id(conexao)
 
             for k, usrs_in_channel in CHANNEL_TABLE.items():
                 if old_nick in usrs_in_channel:
-                    CHANNEL_TABLE[k] = usrs_in_channel.replace(old_nick, payload.decode("utf-8"))
+                    usrs_in_channel.remove(old_nick)
+                    CHANNEL_TABLE[k] = usrs_in_channel
+                    CHANNEL_TABLE[k].append(payload.decode("utf-8"))
                 for usr in usrs_in_channel:
-                    get_object_by_id(usr).enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
+                    get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
                 # conexao.enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
 
             return
