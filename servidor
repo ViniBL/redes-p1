@@ -109,6 +109,10 @@ def dados_recebidos(conexao, dados):
             del USERS_TABLE[get_nick_from_conn(conexao)]
             USERS_TABLE[payload.decode("utf-8")] = id(conexao)
 
+            for k, v in CHANNEL_TABLE.items():
+                if old_nick in v:
+                    CHANNEL_TABLE[k] = v.replace(old_nick, payload.decode("utf-8"))
+
             return
 
         conexao.enviar(msg(f':server 001 {payload.decode("utf-8")} :Welcome'))
