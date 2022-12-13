@@ -1,2 +1,6 @@
 /grader
 __pycache__
+
+venv
+venv.nocync
+/venv/*
