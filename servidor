@@ -108,13 +108,13 @@ def dados_recebidos(conexao, dados):
         USERS_TABLE[payload.decode("utf-8")] = id(conexao)
 
     if cmd == b'PRIVMSG':
-        tgt_usr, msg_bytes = payload.split(b' ', 1)
+        tgt_usr, msg_bytes = payload.split(b' :', 1)
         try:
             tgt_conn_id = USERS_TABLE[tgt_usr.decode("utf-8")]
         except keyError:
             return
 
-        get_object_by_id(tgt_conn_id).enviar(msg_bytes)
+        get_object_by_id(tgt_conn_id).enviar(msg(b':' + bytes(get_nick_from_conn(conexao), 'utf-8') + b' PRIVMSG ' + tgt_usr + b' :' + msg_bytes))
 
     print(conexao, dados)
 
