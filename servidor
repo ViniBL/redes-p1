@@ -18,6 +18,10 @@ def validar_nome(nome):
     return re.match(br'^[a-zA-Z][a-zA-Z0-9_-]*$', nome) is not None
 
 
+def msg(txt):
+    return bytes(txt, 'utf-8') + MSG_TERMINATOR
+
+
 def sair(conexao):
     print(conexao, 'conexão fechada')
     conexao.fechar()
@@ -37,7 +41,7 @@ def get_full_msg(conexao, dados):
     del LIST_OF_CONNS[id(conexao)]
     log(id(conexao), 'deleted in table')
 
-    return (conexao, dados)
+    return (conexao, dados[:-len(MSG_TERMINATOR)])
 
 
 def dados_recebidos(conexao, dados):
@@ -49,13 +53,21 @@ def dados_recebidos(conexao, dados):
     except:
         cmd, payload = dados.split(b' ', 1)[0], None
 
+    cmd = cmd.upper()
+
+
     if dados == b'':
         return sair(conexao)
 
-    if cmd == b"PING":
+    if cmd == b'PING':
         conexao.enviar(b':server PONG server:' + payload)
 
-    # if dados.split(b' ', 1)[0] == b"NICK":
+    if cmd == b'NICK':
+        if not validar_nome(payload):
+            return conexao.enviar(msg(f'server 432 apelido_atual {payload.decode("utf-8")} :Erroneous nickname'))
+
+        conexao.enviar(msg(f':server 001 {payload.decode("utf-8")} :Welcome'))
+        conexao.enviar(msg(f':server 422 {payload.decode("utf-8")} :MOTD File is missing'))
 
     print(conexao, dados)
 
