@@ -15,7 +15,7 @@ CONNS_TABLE = {} # holds dangling messages :: { 'conn': 'mes..sage' }
 USERS_TABLE = {} # { 'apelido': 'conn' }
 
 
-def get_old_nick(conn):
+def get_nick_from_conn(conn):
     for k, v in USERS_TABLE.items():
         if v == id(conn):
             return k
@@ -86,10 +86,10 @@ def dados_recebidos(conexao, dados):
 
         if id(conexao) in USERS_TABLE.values():
             # troca de usuario
-            old_nick = get_old_nick(conexao)
+            old_nick = get_nick_from_conn(conexao)
 
             conexao.enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
-            del USERS_TABLE[get_old_nick(conexao)]
+            del USERS_TABLE[get_nick_from_conn(conexao)]
             USERS_TABLE[payload.decode("utf-8")] = id(conexao)
 
             return
@@ -99,6 +99,9 @@ def dados_recebidos(conexao, dados):
 
         # adiciona usuario na tabela
         USERS_TABLE[payload.decode("utf-8")] = id(conexao)
+
+    if cmd == b'PRIVMSG':
+        target_usr, msg_bytes = payload.split(b' ', 1)
 
     print(conexao, dados)
 
