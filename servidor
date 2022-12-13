@@ -2,6 +2,16 @@
 import asyncio
 from tcp import Servidor
 import re
+from platform import system
+
+
+def log(msg, *args, **kwargs):
+    print('[LOG]::', msg, *args, **kwargs)
+
+
+MSG_TERMINATOR = b'\n' if system() == 'Darwin' else b'\r\n'
+
+LIST_OF_CONNS = {} # holds dangling messages
 
 
 def validar_nome(nome):
@@ -13,19 +23,39 @@ def sair(conexao):
     conexao.fechar()
 
 
+def get_full_msg(conexao, dados):
+    # Garante que a msgm esta completa
+    if id(conexao) not in LIST_OF_CONNS:
+        log(id(conexao), 'created in table')
+        LIST_OF_CONNS[id(conexao)] = b''
+
+    if not dados.endswith(MSG_TERMINATOR):
+        LIST_OF_CONNS[id(conexao)] += dados
+        return
+
+    dados = LIST_OF_CONNS[id(conexao)] + dados
+    del LIST_OF_CONNS[id(conexao)]
+    log(id(conexao), 'deleted in table')
+
+    return (conexao, dados)
+
+
 def dados_recebidos(conexao, dados):
-    
-    try: 
-        cmd, payload = dados.split(b' ',1)
+
+    conexao, dados = get_full_msg(conexao, dados)
+
+    try:
+        cmd, payload = dados.split(b' ', 1)
     except:
-        cmd,payload = dados.split[0] 
+        cmd, payload = dados.split(b' ', 1)[0], None
 
     if dados == b'':
         return sair(conexao)
+
     if cmd == b"PING":
         conexao.enviar(b':server PONG server:' + payload)
 
-    # if dados.split(b' ',1)[0] == b"NICK":
+    # if dados.split(b' ', 1)[0] == b"NICK":
 
     print(conexao, dados)
 
