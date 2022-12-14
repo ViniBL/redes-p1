@@ -46,9 +46,13 @@ def msg(txt):
 def sair(conexao):
     print(conexao, 'conexão fechada')
 
+    mark = None
     for k, v in USERS_TABLE.items():
         if v == id(conexao):
-            del USERS_TABLE[k]
+            mark = k
+            break
+
+    del USERS_TABLE[mark]
 
 
     curr_usr = get_nick_from_conn(conexao)
@@ -81,6 +85,9 @@ def get_full_msg(conexao, dados):
 
 def dados_recebidos(conexao, dados):
 
+    if dados == b'':
+        return sair(conexao)
+
     conexao, dados = get_full_msg(conexao, dados)
 
     try:
@@ -89,10 +96,6 @@ def dados_recebidos(conexao, dados):
         cmd, payload = dados.split(b' ', 1)[0], None
 
     cmd = cmd.upper()
-
-
-    if dados == b'':
-        return sair(conexao)
 
 
     if cmd == b'PING':
