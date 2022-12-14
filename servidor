@@ -105,7 +105,6 @@ def dados_recebidos(conexao, dados):
             # troca de usuario
             old_nick = get_nick_from_conn(conexao)
 
-            # conexao.enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
             del USERS_TABLE[get_nick_from_conn(conexao)]
             USERS_TABLE[payload.decode("utf-8")] = id(conexao)
 
@@ -167,11 +166,17 @@ def dados_recebidos(conexao, dados):
         if not payload.startswith(b'#'):
             return conexao.enviar(msg(f':server 403 {payload.decode("utf-8")} :No such channel'))
 
-        curr_usr = get_nick_from_conn(id(conexao))
+        curr_usr = get_nick_from_conn(conexao)
+        # enviar msgm p tds os usuarios q compartilhjam server c o usuario atual
+        # for channel_name, usr_lst in CHANNEL_TABLE.items():
+        #     if curr_usr in usr_lst:
+        #         for usr in usr_lst:
+        #             get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr} PART {channel_name}'))
+
         for usr in CHANNEL_TABLE[channel_name]:
             get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr} PART {channel_name}'))
 
-        CHANNEL_TABLE[channel_name].pop(curr_usr)
+        CHANNEL_TABLE[channel_name].remove(curr_usr)
 
 
     print(conexao, dados)
