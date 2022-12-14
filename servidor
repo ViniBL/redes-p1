@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+
+
+'''
+Done, pode simplificar o codigo e deixar mais pythonico (pq ta mto macarronada)
+mas ta funcionando.
+'''
+
 import asyncio
 from tcp import Servidor
 import re
