@@ -135,13 +135,22 @@ def dados_recebidos(conexao, dados):
 
 
     if cmd == b'PRIVMSG':
-        tgt_usr, msg_bytes = payload.split(b' :', 1)
+        tgt, msg_bytes = payload.split(b' :', 1)
+        tgt = tgt.decode("utf-8")
         try:
-            tgt_conn_id = USERS_TABLE[tgt_usr.decode("utf-8")]
+            if not tgt.startswith('#'):  # is usr
+                tgt_conn_id = USERS_TABLE[tgt]
+                get_object_by_id(tgt_conn_id).enviar(msg(f':{get_nick_from_conn(conexao)} PRIVMSG {tgt} :{msg_bytes.decode("utf-8")}'))
+
+            else:  # is group chat
+                for usr in CHANNEL_TABLE[tgt]:
+                    tgt_conn_id = USERS_TABLE[usr]
+                    get_object_by_id(tgt_conn_id).enviar(msg(f':{get_nick_from_conn(conexao)} PRIVMSG {tgt} :{msg_bytes.decode("utf-8")}'))
+
         except KeyError:
             return
 
-        get_object_by_id(tgt_conn_id).enviar(msg(f':{get_nick_from_conn(conexao)} PRIVMSG {tgt_usr.decode("utf-8")} :{msg_bytes.decode("utf-8")}'))
+
 
 
     if cmd == b'JOIN':
