@@ -46,15 +46,6 @@ def msg(txt):
 def sair(conexao):
     print(conexao, 'conexão fechada')
 
-    mark = None
-    for k, v in USERS_TABLE.items():
-        if v == id(conexao):
-            mark = k
-            break
-
-    del USERS_TABLE[mark]
-
-
     curr_usr = get_nick_from_conn(conexao)
     for chnl_name, usr_lst in CHANNEL_TABLE.items():
         if curr_usr in usr_lst:
@@ -62,6 +53,14 @@ def sair(conexao):
                 get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr} QUIT :Connection closed'))
             CHANNEL_TABLE[chnl_name].remove(curr_usr)
 
+
+    mark = None
+    for k, v in USERS_TABLE.items():
+        if v == id(conexao):
+            mark = k
+            break
+
+    del USERS_TABLE[mark]
 
     conexao.fechar()
 
