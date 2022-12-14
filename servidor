@@ -48,8 +48,9 @@ def sair(conexao):
     for chnl_name, usr_lst in CHANNEL_TABLE.items():
         if curr_usr in usr_lst:
             for usr in usr_lst:
-                get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr.decode("utf-8")} QUIT :Connection closed'))
-            CHANNEL_TABLE[chnl_name].pop()
+                get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr} QUIT :Connection closed'))
+            CHANNEL_TABLE[chnl_name].remove(curr_usr)
+
 
     conexao.fechar()
 
