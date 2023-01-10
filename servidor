@@ -25,9 +25,13 @@ USERS_TABLE = {} # { 'apelido': 'id_conn' }
 CHANNEL_TABLE = {} # { 'canal': ['apelido0', 'apelido1', ...]}
 
 def get_nick_from_conn(conn):
-    for k, v in USERS_TABLE.items():
-        if v == id(conn):
-            return k
+
+    try:
+        for k, v in USERS_TABLE.items():
+            if v == id(conn):
+                return k
+    except:
+        return '*'
 
 
 def get_object_by_id(id_):
@@ -138,11 +142,16 @@ def dados_recebidos(conexao, dados):
             payload = bytes(payload.decode("utf-8").lower(), 'utf-8')
             if not validar_nome(payload):
                 # checa se nome esta ok
-                return conexao.enviar(msg(f'server 432 apelido_atual {payload.decode("utf-8")} :Erroneous nickname'))
+                if not id(conexao) in USERS_TABLE.values():
+                    apelido_atual = '*'
 
-            if payload.decode("utf-8") in USERS_TABLE:
-                # checa se usuario ja existe
-                return conexao.enviar(msg(f':server 433 apelido_atual {payload.decode("utf-8")} :Nickname is already in use'))
+                return conexao.enviar(msg(f':server 432 {apelido_atual} {payload.decode("utf-8")} :Erroneous nickname'))
+
+            if payload.decode("utf-8") in USERS_TABLE:  # checa se usuario ja existe
+                old_nick = get_nick_from_conn(conexao)
+
+
+                return conexao.enviar(msg(f':server 433 {old_nick} {payload.decode("utf-8")} :Nickname is already in use'))
 
             if id(conexao) in USERS_TABLE.values():
                 # troca de usuario
@@ -184,8 +193,6 @@ def dados_recebidos(conexao, dados):
 
             except KeyError:
                 return
-
-
 
 
         if cmd == b'JOIN':
