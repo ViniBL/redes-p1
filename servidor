@@ -139,43 +139,45 @@ def dados_recebidos(conexao, dados):
 
 
         if cmd == b'NICK':
+            orig_payload = payload
             payload = bytes(payload.decode("utf-8").lower(), 'utf-8')
             if not validar_nome(payload):
                 # checa se nome esta ok
                 if not id(conexao) in USERS_TABLE.values():
                     apelido_atual = '*'
 
-                return conexao.enviar(msg(f':server 432 {apelido_atual} {payload.decode("utf-8")} :Erroneous nickname'))
+                return conexao.enviar(msg(f':server 432 {apelido_atual} {orig_payload.decode("utf-8")} :Erroneous nickname'))
 
             if payload.decode("utf-8") in USERS_TABLE:  # checa se usuario ja existe
                 old_nick = get_nick_from_conn(conexao)
-
-
-                return conexao.enviar(msg(f':server 433 {old_nick} {payload.decode("utf-8")} :Nickname is already in use'))
+                old_nick = old_nick if old_nick is not None else '*'
+                return conexao.enviar(msg(f':server 433 {old_nick} {orig_payload.decode("utf-8")} :Nickname is already in use'))
 
             if id(conexao) in USERS_TABLE.values():
                 # troca de usuario
                 old_nick = get_nick_from_conn(conexao)
 
                 del USERS_TABLE[get_nick_from_conn(conexao)]
-                USERS_TABLE[payload.decode("utf-8")] = id(conexao)
+                USERS_TABLE[payload.decode("utf-8")] = id(conexao)  # atualiza o novo
 
                 for k, usrs_in_channel in CHANNEL_TABLE.items():
                     if old_nick in usrs_in_channel:
-                        usrs_in_channel.remove(old_nick)
-                        CHANNEL_TABLE[k] = usrs_in_channel
-                        CHANNEL_TABLE[k].append(payload.decode("utf-8"))
-                    for usr in usrs_in_channel:
-                        get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
-                    # conexao.enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
+                        CHANNEL_TABLE[k].remove(old_nick)
+                        # CHANNEL_TABLE[k] = usrs_in_channel
+                        CHANNEL_TABLE[k].append(payload.decode("utf-8"))  # adiciona o novo usuário
+                    for usr in CHANNEL_TABLE[k]:
+                        print('AQUI')
+                        get_object_by_id(USERS_TABLE[usr]).enviar(
+                            msg(f':{old_nick} NICK {orig_payload.decode("utf-8")}')
+                        )
 
-                return
-
-            conexao.enviar(msg(f':server 001 {payload.decode("utf-8")} :Welcome'))
-            conexao.enviar(msg(f':server 422 {payload.decode("utf-8")} :MOTD File is missing'))
+                return conexao.enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
 
             # adiciona usuario na tabela
             USERS_TABLE[payload.decode("utf-8")] = id(conexao)
+
+            conexao.enviar(msg(f':server 001 {payload.decode("utf-8")} :Welcome'))
+            conexao.enviar(msg(f':server 422 {payload.decode("utf-8")} :MOTD File is missing'))
 
 
         if cmd == b'PRIVMSG':
