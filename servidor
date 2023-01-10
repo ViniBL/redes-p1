@@ -17,7 +17,8 @@ def log(msg, *args, **kwargs):
     print('[LOG]::', msg, *args, **kwargs)
 
 
-MSG_TERMINATOR = b'\n' if system() == 'Darwin' else b'\r\n'
+# MSG_TERMINATOR = b'\n' if system() == 'Darwin' else b'\r\n'
+MSG_TERMINATOR = b'\r\n'
 
 CONNS_TABLE = {} # holds dangling messages :: { 'id_conn': 'mes..sage' }
 USERS_TABLE = {} # { 'apelido': 'id_conn' }
@@ -40,7 +41,9 @@ def validar_nome(nome):
 
 
 def msg(txt):
-    return bytes(txt, 'utf-8') + MSG_TERMINATOR
+    m = bytes(txt, 'utf-8') + MSG_TERMINATOR
+    log(m)
+    return m
 
 
 def sair(conexao):
@@ -60,7 +63,10 @@ def sair(conexao):
             mark = k
             break
 
-    del USERS_TABLE[mark]
+    try:
+        del USERS_TABLE[mark]
+    except KeyError as err:
+        pass
 
     conexao.fechar()
 
@@ -98,7 +104,7 @@ def dados_recebidos(conexao, dados):
 
 
     if cmd == b'PING':
-        conexao.enviar(b':server PONG server:' + payload)
+        conexao.enviar(msg(f':server PONG server :{payload.decode()}'))
 
 
     if cmd == b'NICK':
