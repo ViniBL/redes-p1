@@ -184,16 +184,19 @@ def dados_recebidos(conexao, dados):
             tgt, msg_bytes = payload.split(b' :', 1)
             tgt = tgt.decode("utf-8")
             try:
-                if not tgt.startswith('#'):  # is usr
-                    tgt_conn_id = USERS_TABLE[tgt]
-                    get_object_by_id(tgt_conn_id).enviar(msg(f':{get_nick_from_conn(conexao)} PRIVMSG {tgt} :{msg_bytes.decode("utf-8")}'))
+                if not tgt.startswith('#'):  # is usr chat
+                    tgt_conn_id = USERS_TABLE[tgt.lower()]
+                    get_object_by_id(tgt_conn_id).enviar(
+                        msg(f':{get_nick_from_conn(conexao)} PRIVMSG {tgt} :{msg_bytes.decode("utf-8")}')
+                    )
 
                 else:  # is group chat
-                    for usr in CHANNEL_TABLE[tgt]:
-                        tgt_conn_id = USERS_TABLE[usr]
+                    for usr in CHANNEL_TABLE[tgt.lower()]:
+                        tgt_conn_id = USERS_TABLE[tgt.lower()]
                         get_object_by_id(tgt_conn_id).enviar(msg(f':{get_nick_from_conn(conexao)} PRIVMSG {tgt} :{msg_bytes.decode("utf-8")}'))
 
-            except KeyError:
+            except KeyError as err:
+                print('Key not found (tgt):', err)
                 return
 
 
