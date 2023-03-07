@@ -57,21 +57,11 @@ def sair(conexao):
     for chnl_name, usr_lst in CHANNEL_TABLE.items():
         if curr_usr in usr_lst:
             for usr in usr_lst:
-                if usr != curr_user:
+                if usr != curr_usr:
                     get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr} QUIT :Connection closed'))
             CHANNEL_TABLE[chnl_name].remove(curr_usr)
 
-
-    mark = None
-    for k, v in USERS_TABLE.items():
-        if v == id(conexao):
-            mark = k
-            break
-
-    try:
-        del USERS_TABLE[mark]
-    except KeyError as err:
-        pass
+    del USERS_TABLE[curr_usr]
 
     conexao.fechar()
 
@@ -97,22 +87,22 @@ def get_full_msg_no_terminator(conexao, dados):
 
     for msg_data in msgs_data:
         if id(conexao) not in CONNS_TABLE:
-            log(id(conexao), 'created in table')
+            # log(id(conexao), 'created in table')
             CONNS_TABLE[id(conexao)] = b''
 
         CONNS_TABLE[id(conexao)] += msg_data
-        log(id(conexao), 'appended', msg_data)
+        # log(id(conexao), 'appended', msg_data)
 
         if msg_data.endswith(b'\n'):
             msgs.append((conexao, CONNS_TABLE[id(conexao)]))
             del CONNS_TABLE[id(conexao)]
-            log(id(conexao), 'deleted in table')
+            # log(id(conexao), 'deleted in table')
 
 
     for i, msg in enumerate(msgs):
         msgs[i] = (msg[0], msg[1][:-2])
 
-    log(f'OUT FOR:')
+    # log(f'OUT FOR:')
     # for a, b in msgs:
     #     log(f'\t{id(a)}, {b}')
     return msgs
@@ -120,7 +110,7 @@ def get_full_msg_no_terminator(conexao, dados):
 
 def dados_recebidos(conexao, dados):
 
-    log('OBJ RCV', conexao, dados)
+    log('[OBJ RCV]', conexao, dados)
 
     if dados == b'':
         return sair(conexao)
@@ -152,6 +142,7 @@ def dados_recebidos(conexao, dados):
                 return conexao.enviar(msg(f':server 432 {apelido_atual} {orig_payload.decode("utf-8")} :Erroneous nickname'))
 
             if payload.decode("utf-8") in USERS_TABLE:  # checa se usuario ja existe
+                log('NICK ALREADY EXISTS')
                 old_nick = get_nick_from_conn(conexao)
                 old_nick = old_nick if old_nick is not None else '*'
                 return conexao.enviar(msg(f':server 433 {old_nick} {orig_payload.decode("utf-8")} :Nickname is already in use'))
