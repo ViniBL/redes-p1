@@ -232,7 +232,7 @@ def dados_recebidos(conexao, dados):
             n = 512 - len(f':server 353 {curr_usr} = {channel_name} :') - len(MSG_TERMINATOR)
             chunks = [full_usr_str[i:i+n] for i in range(0, len(full_usr_str), n)]
             conexao.enviar(msg(f':server 353 {curr_usr} = {channel_name} :{" ".join(chunks)}'))
-
+            return conexao.enviar(msg(f':server 366 {curr_usr} {channel_name} :End of /NAMES list.'))
 
         if cmd == b'PART':
             payload = bytes(payload.decode("utf-8").lower(), 'utf-8')
