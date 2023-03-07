@@ -22,12 +22,12 @@ def log(msg, *args, **kwargs):
 MSG_TERMINATOR = b'\r\n'
 
 CONNS_TABLE = {} # holds dangling messages :: { 'id_conn': 'mes..sage' }
-USERS_TABLE = {} # { 'apelido': 'id_conn' }
-CHANNEL_TABLE = {} # { 'canal': ['apelido0', 'apelido1', ...]}
+USERS_TO_ID_TABLE = {} # { 'apelido': 'id_conn' }
+CHANNEL_NAME_TO_USER_LST_TABLE = {} # { 'canal': ['apelido0', 'apelido1', ...]}
 
 def get_nick_from_conn(conn):
     try:
-        for k, v in USERS_TABLE.items():
+        for k, v in USERS_TO_ID_TABLE.items():
             if v == id(conn):
                 return k
     except:
@@ -54,14 +54,14 @@ def sair(conexao):
     log(conexao, 'conexão fechada')
 
     curr_usr = get_nick_from_conn(conexao)
-    for chnl_name, usr_lst in CHANNEL_TABLE.items():
+    for chnl_name, usr_lst in CHANNEL_NAME_TO_USER_LST_TABLE.items():
         if curr_usr in usr_lst:
             for usr in usr_lst:
                 if usr != curr_usr:
-                    get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr} QUIT :Connection closed'))
-            CHANNEL_TABLE[chnl_name].remove(curr_usr)
+                    get_object_by_id(USERS_TO_ID_TABLE[usr]).enviar(msg(f':{curr_usr} QUIT :Connection closed'))
+            CHANNEL_NAME_TO_USER_LST_TABLE[chnl_name].remove(curr_usr)
 
-    del USERS_TABLE[curr_usr]
+    del USERS_TO_ID_TABLE[curr_usr]
 
     conexao.fechar()
 
@@ -134,40 +134,43 @@ def dados_recebidos(conexao, dados):
         if cmd == b'NICK':
             orig_payload = payload
             payload = bytes(payload.decode("utf-8").lower(), 'utf-8')
+            old_nick = get_nick_from_conn(conexao)
             if not validar_nome(payload):
                 # checa se nome esta ok
-                if not id(conexao) in USERS_TABLE.values():
+                if not id(conexao) in USERS_TO_ID_TABLE.values():
                     apelido_atual = '*'
 
                 return conexao.enviar(msg(f':server 432 {apelido_atual} {orig_payload.decode("utf-8")} :Erroneous nickname'))
 
-            if payload.decode("utf-8") in USERS_TABLE:  # checa se usuario ja existe
+            if payload.decode("utf-8") in USERS_TO_ID_TABLE:  # checa se usuario ja existe
                 log('NICK ALREADY EXISTS')
                 old_nick = get_nick_from_conn(conexao)
                 old_nick = old_nick if old_nick is not None else '*'
                 return conexao.enviar(msg(f':server 433 {old_nick} {orig_payload.decode("utf-8")} :Nickname is already in use'))
 
-            if id(conexao) in USERS_TABLE.values():
+            if old_nick in USERS_TO_ID_TABLE.keys():
                 # troca de usuario
-                old_nick = get_nick_from_conn(conexao)
+                del USERS_TO_ID_TABLE[old_nick]
+                new_nick = payload.decode("utf-8")
+                USERS_TO_ID_TABLE[new_nick] = id(conexao)  # atualiza o novo
 
-                del USERS_TABLE[old_nick]
-                USERS_TABLE[payload.decode("utf-8")] = id(conexao)  # atualiza o novo
-
-                for k, usrs_in_channel in CHANNEL_TABLE.items():  # notifica sobre a troca
+                for channel_name, usrs_in_channel in CHANNEL_NAME_TO_USER_LST_TABLE.items():  # notifica sobre a troca
                     if old_nick in usrs_in_channel:
-                        CHANNEL_TABLE[k].remove(old_nick)  # remove o antigo nick
-                        # CHANNEL_TABLE[k] = usrs_in_channel
-                        CHANNEL_TABLE[k].append(payload.decode("utf-8"))  # adiciona o novo usuário
-                        for usr in CHANNEL_TABLE[k]:
-                            get_object_by_id(USERS_TABLE[usr]).enviar(
-                                msg(f':{old_nick} NICK {orig_payload.decode("utf-8")}')
-                            )
+                        CHANNEL_NAME_TO_USER_LST_TABLE[channel_name].remove(old_nick)  # remove o antigo nick
+                        # CHANNEL_NAME_TO_USER_LST_TABLE[k] = usrs_in_channel
+                        CHANNEL_NAME_TO_USER_LST_TABLE[channel_name].append(new_nick)  # adiciona o novo usuário
+                        # for usr in CHANNEL_NAME_TO_USER_LST_TABLE[channel_name]:
+                        #     get_object_by_id(USERS_TO_ID_TABLE[usr]).enviar(
+                        #         msg(f':{old_nick} NICK {orig_payload.decode("utf-8")}')
+                        #     )
+                        # get_object_by_id(USERS_TO_ID_TABLE[new_nick]).enviar(
+                        #     msg(f':{old_nick} NICK {new_nick}')
+                        # )
 
-                return conexao.enviar(msg(f':{old_nick} NICK {payload.decode("utf-8")}'))
+                return conexao.enviar(msg(f':{old_nick} NICK {new_nick}'))
 
             # adiciona usuario na tabela
-            USERS_TABLE[payload.decode("utf-8")] = id(conexao)
+            USERS_TO_ID_TABLE[payload.decode("utf-8")] = id(conexao)
 
             conexao.enviar(msg(f':server 001 {payload.decode("utf-8")} :Welcome'))
             conexao.enviar(msg(f':server 422 {payload.decode("utf-8")} :MOTD File is missing'))
@@ -178,10 +181,10 @@ def dados_recebidos(conexao, dados):
             tgt = tgt.decode("utf-8")
             try:
                 if not tgt.startswith('#'):  # is usr chat
-                    log('USERS_TABLE')
+                    log('USERS_TO_ID_TABLE')
                     log(tgt.lower())
-                    log(USERS_TABLE)
-                    tgt_conn_id = USERS_TABLE[tgt.lower()]
+                    log(USERS_TO_ID_TABLE)
+                    tgt_conn_id = USERS_TO_ID_TABLE[tgt.lower()]
                     get_object_by_id(tgt_conn_id).enviar(
                         msg(f':{get_nick_from_conn(conexao)} PRIVMSG {tgt} :{msg_bytes.decode("utf-8")}')
                     )
@@ -189,11 +192,11 @@ def dados_recebidos(conexao, dados):
                 else:  # is group chat
                     log('IS GROUP CHAT: tgt=', tgt)
                     curr_usr = get_nick_from_conn(conexao)
-                    for usr in CHANNEL_TABLE[tgt.lower()]:
-                        log('CHANNEL_TABLE')
+                    for usr in CHANNEL_NAME_TO_USER_LST_TABLE[tgt.lower()]:
+                        log('CHANNEL_NAME_TO_USER_LST_TABLE')
                         log(tgt.lower())
-                        log(CHANNEL_TABLE)
-                        tgt_conn_id = USERS_TABLE[usr.lower()]
+                        log(CHANNEL_NAME_TO_USER_LST_TABLE)
+                        tgt_conn_id = USERS_TO_ID_TABLE[usr.lower()]
                         tgt_nick_obj = get_object_by_id(tgt_conn_id)
 
                         log('tgt_nick=', usr)
@@ -212,17 +215,17 @@ def dados_recebidos(conexao, dados):
                 )
 
             channel_name = payload.decode("utf-8")
-            if channel_name not in CHANNEL_TABLE:
-                CHANNEL_TABLE[channel_name] = []
+            if channel_name not in CHANNEL_NAME_TO_USER_LST_TABLE:
+                CHANNEL_NAME_TO_USER_LST_TABLE[channel_name] = []
 
             curr_usr = get_nick_from_conn(conexao)
-            if curr_usr not in CHANNEL_TABLE[channel_name]:
-                CHANNEL_TABLE[channel_name].append(curr_usr)
+            if curr_usr not in CHANNEL_NAME_TO_USER_LST_TABLE[channel_name]:
+                CHANNEL_NAME_TO_USER_LST_TABLE[channel_name].append(curr_usr)
 
-            for usr in CHANNEL_TABLE[channel_name]:
-                get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr} JOIN :{channel_name}'))
+            for usr in CHANNEL_NAME_TO_USER_LST_TABLE[channel_name]:
+                get_object_by_id(USERS_TO_ID_TABLE[usr]).enviar(msg(f':{curr_usr} JOIN :{channel_name}'))
 
-            channel_usrs_lst = CHANNEL_TABLE[channel_name]
+            channel_usrs_lst = CHANNEL_NAME_TO_USER_LST_TABLE[channel_name]
             channel_usrs_lst.sort()
             full_usr_str = " ".join(channel_usrs_lst)
 
@@ -241,17 +244,17 @@ def dados_recebidos(conexao, dados):
 
             curr_usr = get_nick_from_conn(conexao)
             # enviar msgm p tds os usuarios q compartilhjam server c o usuario atual
-            # for channel_name, usr_lst in CHANNEL_TABLE.items():
+            # for channel_name, usr_lst in CHANNEL_NAME_TO_USER_LST_TABLE.items():
             #     if curr_usr in usr_lst:
             #         for usr in usr_lst:
-            #             get_object_by_id(USERS_TABLE[usr]).enviar(
+            #             get_object_by_id(USERS_TO_ID_TABLE[usr]).enviar(
             #               msg(f':{curr_usr} PART {channel_name}')
             #             )
 
-            for usr in CHANNEL_TABLE[channel_name]:
-                get_object_by_id(USERS_TABLE[usr]).enviar(msg(f':{curr_usr} PART {channel_name}'))
+            for usr in CHANNEL_NAME_TO_USER_LST_TABLE[channel_name]:
+                get_object_by_id(USERS_TO_ID_TABLE[usr]).enviar(msg(f':{curr_usr} PART {channel_name}'))
 
-            CHANNEL_TABLE[channel_name].remove(curr_usr)
+            CHANNEL_NAME_TO_USER_LST_TABLE[channel_name].remove(curr_usr)
 
 
 def conexao_aceita(conexao):
